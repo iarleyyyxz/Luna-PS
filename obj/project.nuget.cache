@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "dgSpecHash": "2ZuDK31iEN0=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\josy-\\LunaPS\\LunaPS.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\josy-\\.nuget\\packages\\microsoft.csharp\\4.7.0\\microsoft.csharp.4.7.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\microsoft.dotnet.platformabstractions\\3.1.6\\microsoft.dotnet.platformabstractions.3.1.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\microsoft.extensions.dependencymodel\\8.0.0\\microsoft.extensions.dependencymodel.8.0.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk\\4.7.6\\opentk.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.compute\\4.7.6\\opentk.compute.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.core\\4.7.6\\opentk.core.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.graphics\\4.7.6\\opentk.graphics.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.input\\4.7.6\\opentk.input.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.mathematics\\4.7.6\\opentk.mathematics.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.openal\\4.7.6\\opentk.openal.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.redist.glfw\\3.3.8.30\\opentk.redist.glfw.3.3.8.30.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.windowing.common\\4.7.6\\opentk.windowing.common.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.windowing.desktop\\4.7.6\\opentk.windowing.desktop.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\opentk.windowing.graphicslibraryframework\\4.7.6\\opentk.windowing.graphicslibraryframework.4.7.6.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\silk.net.core\\2.22.0\\silk.net.core.2.22.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\silk.net.vulkan\\2.22.0\\silk.net.vulkan.2.22.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\6.0.0\\system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
+    "C:\\Users\\josy-\\.nuget\\packages\\system.text.json\\8.0.0\\system.text.json.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
