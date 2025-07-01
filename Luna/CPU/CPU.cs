@@ -1,3 +1,7 @@
+using System;
+using System.IO;
+
+
 public class CPU
 {
     // Registradores

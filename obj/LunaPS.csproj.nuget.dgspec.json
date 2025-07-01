@@ -51,6 +51,18 @@
             "Silk.NET.Vulkan": {
               "target": "Package",
               "version": "[2.22.0, )"
+            },
+            "Vortice.DXGI": {
+              "target": "Package",
+              "version": "[3.6.2, )"
+            },
+            "Vortice.Direct3D11": {
+              "target": "Package",
+              "version": "[3.6.2, )"
+            },
+            "Vortice.Mathematics": {
+              "target": "Package",
+              "version": "[1.9.3, )"
             }
           },
           "imports": [

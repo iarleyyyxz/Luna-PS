@@ -1,3 +1,7 @@
+using System;
+using System.IO;
+
+
 public class Memory
 {
     private const int RAM_SIZE = 2 * 1024 * 1024;      // 2 MB

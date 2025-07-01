@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LunaPS")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e4b11913aea78ddc4a7805058a00390f5aa0266a")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a677f045ddcb652de61f905698ff36c03c321636")]
 [assembly: System.Reflection.AssemblyProductAttribute("LunaPS")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LunaPS")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
