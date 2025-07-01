@@ -1,54 +1,196 @@
-// Estrutura simplificada de um pacote POLY_F3
-// Geralmente o pacote do PS1 vem em 4 palavras de 32 bits (4 uints)
-using Renderer.OpenGL;
-using OpenTK.Mathematics;
-public struct GPUCommand
-{
-    public uint Cmd;  // Comando POLY_F3: 0x20 no byte mais baixo
-    public uint Vertex1;
-    public uint Vertex2;
-    public uint Vertex3;
-}
+using System;
+using System.Collections.Generic;
+using Luna.Math;
 
 public class GPU
 {
-    OpenGLRenderer renderer;
+    private Queue<uint> commandBuffer = new Queue<uint>();
+    private IGPURenderer renderer;
 
-    public GPU(OpenGLRenderer renderer)
+    private ushort[,] vram = new ushort[1024, 512]; // 1MB VRAM (16bpp)
+    private byte transferMode = 0;
+    private int transferX, transferY, transferWidth, transferHeight;
+    private int transferCount = 0;
+
+    public GPU(IGPURenderer rendererBackend)
     {
-        this.renderer = renderer;
+        renderer = rendererBackend;
+        Reset();
     }
 
-    public void ProcessCommand(GPUCommand cmd)
+    public void Reset()
     {
-        byte commandType = (byte)(cmd.Cmd & 0xFF);
-        if (commandType == 0x20) // POLY_F3
+        commandBuffer.Clear();
+        Array.Clear(vram, 0, vram.Length);
+        renderer.Clear();
+    }
+
+    public void WriteGP0(uint value)
+    {
+        byte cmd = (byte)(value >> 24);
+
+        // Etapa 1: Preparar a transferência A0h
+        if (transferMode == 1 && commandBuffer.Count < 3)
         {
-            // Extrair cor flat do pacote (normalmente nos bits altos do Cmd)
-            byte r = (byte)((cmd.Cmd >> 16) & 0xFF);
-            byte g = (byte)((cmd.Cmd >> 8) & 0xFF);
-            byte b = (byte)(cmd.Cmd & 0xFF);
+            commandBuffer.Enqueue(value);
 
-            // Extrair as coordenadas dos vértices (cada 16 bits = x,y)
-            float x1 = (short)(cmd.Vertex1 & 0xFFFF);
-            float y1 = (short)((cmd.Vertex1 >> 16) & 0xFFFF);
+            if (commandBuffer.Count == 3)
+            {
+                ExecuteCommand(); // Executa SetupVRAMTransfer
+                commandBuffer.Clear();
+                transferMode = 2; // Agora começa a aceitar os dados da VRAM
+            }
+            return;
+        }
 
-            float x2 = (short)(cmd.Vertex2 & 0xFFFF);
-            float y2 = (short)((cmd.Vertex2 >> 16) & 0xFFFF);
+        // Etapa 2: Receber dados da VRAM
+        if (transferMode == 2)
+        {
+            UploadToVRAM(value);
+            return;
+        }
 
-            float x3 = (short)(cmd.Vertex3 & 0xFFFF);
-            float y3 = (short)((cmd.Vertex3 >> 16) & 0xFFFF);
-
-            // Chama o renderizador OpenGL
-            renderer.RenderPolyF3(
-                new Vector2(x1, y1),
-                new Vector2(x2, y2),
-                new Vector2(x3, y3),
-                r, g, b);
+        // Etapa normal de comandos
+        if (cmd == 0xA0)
+        {
+            commandBuffer.Clear();
+            commandBuffer.Enqueue(value);
+            transferMode = 1; // Começa a receber dados de setup
         }
         else
         {
-            Console.WriteLine($"Comando GPU desconhecido: 0x{commandType:X2}");
+            commandBuffer.Enqueue(value);
+            if (IsCommandComplete())
+            {
+                ExecuteCommand();
+                commandBuffer.Clear();
+            }
         }
     }
+
+
+
+    public void Render()
+    {
+        renderer.Present();
+    }
+
+    private void UploadToVRAM(uint data)
+    {
+
+        if (transferWidth == 0 || transferHeight == 0)
+        {
+            Console.WriteLine("[GPU] Erro: tentativa de escrever na VRAM sem tamanho válido.");
+            return;
+        }
+
+        // Cada palavra contém 2 pixels 16bpp
+        ushort pixel1 = (ushort)(data & 0xFFFF);
+        ushort pixel2 = (ushort)((data >> 16) & 0xFFFF);
+
+        int px = transferX + (transferCount % transferWidth);
+        int py = transferY + (transferCount / transferWidth);
+
+        if (px < 1024 && py < 512) vram[px, py] = pixel1;
+        px++;
+        if (px < 1024 && py < 512) vram[px, py] = pixel2;
+
+        transferCount += 2;
+
+        if (transferCount >= transferWidth * transferHeight)
+        {
+            Console.WriteLine("[GPU] Transferência para VRAM finalizada");
+            transferMode = 0;
+            transferCount = 0;
+        }
+    }
+
+    private bool IsCommandComplete()
+    {
+        byte cmd = (byte)(commandBuffer.Peek() >> 24);
+        return cmd switch
+        {
+            0x20 => commandBuffer.Count >= 4, // Triângulo plano
+            0x24 => commandBuffer.Count >= 7, // Triângulo texturizado → corrigido de 6 para 7
+            0xA0 => commandBuffer.Count >= 3, // Transferência para VRAM (setup)
+            _ => true,
+        };
+    }
+
+    private void ExecuteCommand()
+    {
+        uint[] data = commandBuffer.ToArray();
+        byte cmd = (byte)(data[0] >> 24);
+
+        switch (cmd)
+        {
+            case 0x20:
+                DrawFlatTriangle(data);
+                break;
+            case 0x24:
+                DrawTexturedTriangle(data);
+                break;
+            case 0xA0:
+                SetupVRAMTransfer(data);
+                break;
+            default:
+                Console.WriteLine($"[GPU] Comando GP0 desconhecido: 0x{cmd:X2}");
+                break;
+        }
+    }
+
+    private void SetupVRAMTransfer(uint[] data)
+    {
+        // GP0 A0h: Copy Rectangle from CPU to VRAM
+        transferX = (int)(data[1] & 0xFFFF);
+        transferY = (int)(data[1] >> 16);
+        transferWidth = (int)(data[2] & 0xFFFF);
+        transferHeight = (int)(data[2] >> 16);
+        transferCount = 0;
+        Console.WriteLine($"[GPU] Transferência para VRAM: ({transferX},{transferY}) {transferWidth}x{transferHeight}");
+    }
+
+    private void DrawFlatTriangle(uint[] data)
+    {
+        uint color = data[0] & 0x00FFFFFF;
+
+        Vertex2D v0 = ExtractVertex(data[1]);
+        Vertex2D v1 = ExtractVertex(data[2]);
+        Vertex2D v2 = ExtractVertex(data[3]);
+
+        renderer.DrawFlatTriangle(v0, v1, v2, color);
+    }
+
+    private void DrawTexturedTriangle(uint[] data)
+    {
+        uint color = data[0] & 0x00FFFFFF;
+
+        TexVertex v0 = ExtractTexVertex(data[1], data[2]);
+        TexVertex v1 = ExtractTexVertex(data[3], data[4]);
+        TexVertex v2 = ExtractTexVertex(data[5], data[6]);
+
+        // Assume textura carregada em uma região da VRAM (ex: 256x256 em 0,0)
+        int texId = renderer.CreateTextureFromVRAM(vram, 0, 0, 256, 256);
+
+        renderer.DrawTexturedTriangle(v0, v1, v2, texId);
+    }
+
+    private Vertex2D ExtractVertex(uint data)
+    {
+        float x = data & 0xFFFF;
+        float y = (data >> 16) & 0xFFFF;
+        return new Vertex2D(x, y);
+    }
+
+    private TexVertex ExtractTexVertex(uint posData, uint uvData)
+    {
+        float x = posData & 0xFFFF;
+        float y = (posData >> 16) & 0xFFFF;
+
+        float u = uvData & 0xFF;
+        float v = (uvData >> 8) & 0xFF;
+
+        return new TexVertex(x, y, u / 256f, v / 256f); // UV normalizado
+    }
 }
+
