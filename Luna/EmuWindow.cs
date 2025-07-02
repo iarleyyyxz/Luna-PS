@@ -29,11 +29,8 @@ public class EmuWindow : GameWindow
     protected override void OnRenderFrame(FrameEventArgs args)
     {
         base.OnRenderFrame(args);
-
-       // GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-
+       // GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);888
         gpu.Render();
-
         SwapBuffers();
     }
 

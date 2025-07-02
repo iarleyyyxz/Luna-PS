@@ -9,7 +9,10 @@
       "LunaPS/1.0.0": {
         "dependencies": {
           "OpenTK": "4.7.6",
-          "Silk.NET.Vulkan": "2.22.0"
+          "Silk.NET.Vulkan": "2.22.0",
+          "Vortice.DXGI": "3.6.2",
+          "Vortice.Direct3D11": "3.6.2",
+          "Vortice.Mathematics": "1.9.3"
         },
         "runtime": {
           "LunaPS.dll": {}
@@ -175,6 +178,25 @@
           }
         }
       },
+      "SharpGen.Runtime/2.2.0-beta": {
+        "runtime": {
+          "lib/net8.0/SharpGen.Runtime.dll": {
+            "assemblyVersion": "2.2.0.0",
+            "fileVersion": "2.2.0.0"
+          }
+        }
+      },
+      "SharpGen.Runtime.COM/2.2.0-beta": {
+        "dependencies": {
+          "SharpGen.Runtime": "2.2.0-beta"
+        },
+        "runtime": {
+          "lib/net8.0/SharpGen.Runtime.COM.dll": {
+            "assemblyVersion": "2.2.0.0",
+            "fileVersion": "2.2.0.0"
+          }
+        }
+      },
       "Silk.NET.Core/2.22.0": {
         "dependencies": {
           "Microsoft.CSharp": "4.7.0",
@@ -209,6 +231,51 @@
       "System.Text.Json/8.0.0": {
         "dependencies": {
           "System.Text.Encodings.Web": "8.0.0"
+        }
+      },
+      "Vortice.Direct3D11/3.6.2": {
+        "dependencies": {
+          "SharpGen.Runtime": "2.2.0-beta",
+          "Vortice.DXGI": "3.6.2"
+        },
+        "runtime": {
+          "lib/net8.0/Vortice.Direct3D11.dll": {
+            "assemblyVersion": "3.6.2.0",
+            "fileVersion": "3.6.2.0"
+          }
+        }
+      },
+      "Vortice.DirectX/3.6.2": {
+        "dependencies": {
+          "SharpGen.Runtime": "2.2.0-beta",
+          "SharpGen.Runtime.COM": "2.2.0-beta",
+          "Vortice.Mathematics": "1.9.3"
+        },
+        "runtime": {
+          "lib/net8.0/Vortice.DirectX.dll": {
+            "assemblyVersion": "3.6.2.0",
+            "fileVersion": "3.6.2.0"
+          }
+        }
+      },
+      "Vortice.DXGI/3.6.2": {
+        "dependencies": {
+          "SharpGen.Runtime": "2.2.0-beta",
+          "Vortice.DirectX": "3.6.2"
+        },
+        "runtime": {
+          "lib/net8.0/Vortice.DXGI.dll": {
+            "assemblyVersion": "3.6.2.0",
+            "fileVersion": "3.6.2.0"
+          }
+        }
+      },
+      "Vortice.Mathematics/1.9.3": {
+        "runtime": {
+          "lib/net9.0/Vortice.Mathematics.dll": {
+            "assemblyVersion": "1.9.3.0",
+            "fileVersion": "1.9.3.0"
+          }
         }
       }
     }
@@ -317,6 +384,20 @@
       "path": "opentk.windowing.graphicslibraryframework/4.7.6",
       "hashPath": "opentk.windowing.graphicslibraryframework.4.7.6.nupkg.sha512"
     },
+    "SharpGen.Runtime/2.2.0-beta": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-pqf/lAf4jy1iWqkm37JmhoQhBMPVudI/F9qp2zVvzjWAPeSggRIuxGMVEZQ4UQiqtJ1Rf/+j3MVAONGYyCEDzQ==",
+      "path": "sharpgen.runtime/2.2.0-beta",
+      "hashPath": "sharpgen.runtime.2.2.0-beta.nupkg.sha512"
+    },
+    "SharpGen.Runtime.COM/2.2.0-beta": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-4vsXC8ohyVslcUDVBoVXLDkjKprqujh3GWy+DqqULjyZ3GCx7nwRAV5DdrXZxX70iEiKyI3TxW3Qhf/oOXeC1Q==",
+      "path": "sharpgen.runtime.com/2.2.0-beta",
+      "hashPath": "sharpgen.runtime.com.2.2.0-beta.nupkg.sha512"
+    },
     "Silk.NET.Core/2.22.0": {
       "type": "package",
       "serviceable": true,
@@ -365,6 +446,34 @@
       "sha512": "sha512-OdrZO2WjkiEG6ajEFRABTRCi/wuXQPxeV6g8xvUJqdxMvvuCCEk86zPla8UiIQJz3durtUEbNyY/3lIhS0yZvQ==",
       "path": "system.text.json/8.0.0",
       "hashPath": "system.text.json.8.0.0.nupkg.sha512"
+    },
+    "Vortice.Direct3D11/3.6.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-+tXkwV4YVFgox3NjLGBOPmEHK8Jd/8ElI3X8aX7xq4JhsC3J9BqpUhpI+4LOKeCGN+XCORhyFq0ow+pB44YQTg==",
+      "path": "vortice.direct3d11/3.6.2",
+      "hashPath": "vortice.direct3d11.3.6.2.nupkg.sha512"
+    },
+    "Vortice.DirectX/3.6.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-pa/97U5IHascS/UJzMWFSKIs3wxh36zc8JpI+fzi/JLQk4wfTZur0n/Y9Lcp8i7hsf613Vu/6n6IImWSc9wupw==",
+      "path": "vortice.directx/3.6.2",
+      "hashPath": "vortice.directx.3.6.2.nupkg.sha512"
+    },
+    "Vortice.DXGI/3.6.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-SPnBb1x3+CEqq7L5SEejElD2tMjkdE+bqN4c/eSNHj9WEpRPvAO0QFSEN8d9LiRDt9i9geD8m7E4s8sLMgz2qQ==",
+      "path": "vortice.dxgi/3.6.2",
+      "hashPath": "vortice.dxgi.3.6.2.nupkg.sha512"
+    },
+    "Vortice.Mathematics/1.9.3": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-VzXWjzM4F5pK3gP3m0wv9LqhRrcmQebf+lK/gIPLZ+TPXTptMal74iGkQbivIJm9OwdMZdGOuk1dvwc2iJHUGQ==",
+      "path": "vortice.mathematics/1.9.3",
+      "hashPath": "vortice.mathematics.1.9.3.nupkg.sha512"
     }
   }
 }

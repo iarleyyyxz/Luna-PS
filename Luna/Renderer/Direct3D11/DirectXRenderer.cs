@@ -24,8 +24,8 @@ public class DirectXRenderer : IGPURenderer
             SwapEffect = SwapEffect.Discard
         };
 
-        D3D11.D3D11CreateDeviceAndSwapChain(null, Driver.Hardware, DeviceCreationFlags.None,
-            null, desc, out device, out context, out swapChain);
+      //  D3D11.D3D11CreateDeviceAndSwapChain(null, Vortice.Direct3D.DriverType.Hardware, DeviceCreationFlags.None,
+        //    null, desc, out device, out context, out swapChain);
 
         var backBuffer = swapChain.GetBuffer<ID3D11Texture2D>(0);
         renderTarget = device.CreateRenderTargetView(backBuffer);

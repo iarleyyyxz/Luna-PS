@@ -33,3 +33,9 @@ C:\Users\josy-\LunaPS\obj\Debug\net9.0\LunaPS.pdb
 C:\Users\josy-\LunaPS\obj\Debug\net9.0\LunaPS.genruntimeconfig.cache
 C:\Users\josy-\LunaPS\obj\Debug\net9.0\ref\LunaPS.dll
 C:\Users\josy-\LunaPS\obj\Debug\net9.0\LunaPS.sourcelink.json
+C:\Users\josy-\LunaPS\bin\Debug\net9.0\SharpGen.Runtime.dll
+C:\Users\josy-\LunaPS\bin\Debug\net9.0\SharpGen.Runtime.COM.dll
+C:\Users\josy-\LunaPS\bin\Debug\net9.0\Vortice.Direct3D11.dll
+C:\Users\josy-\LunaPS\bin\Debug\net9.0\Vortice.DirectX.dll
+C:\Users\josy-\LunaPS\bin\Debug\net9.0\Vortice.DXGI.dll
+C:\Users\josy-\LunaPS\bin\Debug\net9.0\Vortice.Mathematics.dll

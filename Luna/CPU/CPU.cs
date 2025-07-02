@@ -17,6 +17,9 @@ public class CPU
     private uint[] GTE_Data = new uint[32];      // Dados (ex: VXY0, VZ0, IR1, etc.)
     private uint[] GTE_Control = new uint[32];   // Controle (ex: MAC0-3, FLAG, etc.)
 
+    private uint nextPC;
+    private bool inDelaySlot = false;
+
 
     private uint[] COP0Registers = new uint[32];
 
@@ -33,10 +36,22 @@ public class CPU
     public void Step()
     {
         uint instruction = FetchInstruction();
-        PC += 4;           // Incrementa PC para próxima instrução
+
+        // Se estamos em delay slot, informe
+        if (inDelaySlot)
+        {
+            inDelaySlot = false;
+            PC = nextPC; // agora sim fazemos o salto
+        }
+        else
+        {
+            PC += 4;
+        }
+
         ExecuteInstruction(instruction);
-        Registers[0] = 0;  // Garante que $zero seja sempre zero
+        Registers[0] = 0;  // Garante $zero
     }
+
 
     public void Reset()
     {
@@ -135,6 +150,7 @@ public class CPU
 
             default:
                 Console.WriteLine($"Opcode desconhecido: 0x{opcode:X2} @PC=0x{PC - 4:X8}");
+                RaiseException(10); // Reserved Instruction
                 break;
         }
     }
@@ -166,7 +182,8 @@ public class CPU
                 Registers[rd] = (int)Registers[rs] < (int)Registers[rt] ? 1u : 0u;
                 break;
             case 0x08: // JR
-                PC = Registers[rs];
+                nextPC = Registers[rs];
+                inDelaySlot = true;
                 break;
             case 0x26: // XOR
                 Registers[rd] = Registers[rs] ^ Registers[rt];
@@ -174,6 +191,23 @@ public class CPU
             case 0x27: // NOR
                 Registers[rd] = ~(Registers[rs] | Registers[rt]);
                 break;
+            case 0x20: // ADD (com detecção de overflow)
+                {
+                    int a = (int)Registers[rs];
+                    int b = (int)Registers[rt];
+                    int result = a + b;
+
+                    // Detecta overflow com base em sinal
+                    if (((a ^ b) >= 0) && ((a ^ result) < 0))
+                    {
+                        RaiseException(12); // 12 = Integer Overflow
+                        return;
+                    }
+
+                    Registers[rd] = (uint)result;
+                    break;
+                }
+
             case 0x18: // MULT
                 {
                     int s = (int)Registers[rs];
@@ -242,22 +276,38 @@ public class CPU
     private void J(uint instruction)
     {
         uint target = instruction & 0x03FFFFFF;
-        PC = (PC & 0xF0000000) | (target << 2);
+        nextPC = (PC & 0xF0000000) | (target << 2);
+        inDelaySlot = true;
     }
+
 
     private void JAL(uint instruction)
     {
-        Registers[31] = PC;
-        J(instruction);
+        Registers[31] = PC + 4;
+        J(instruction); // já trata delay slot
     }
+
 
     private void ADDI(uint instruction)
     {
         uint rs = (instruction >> 21) & 0x1F;
         uint rt = (instruction >> 16) & 0x1F;
         short imm = (short)(instruction & 0xFFFF);
-        Registers[rt] = (uint)(Registers[rs] + imm);
+
+        int a = (int)Registers[rs];
+        int b = (int)imm;
+        int result = a + b;
+
+        // Detecta overflow
+        if (((a ^ b) >= 0) && ((a ^ result) < 0))
+        {
+            RaiseException(12); // Integer Overflow
+            return;
+        }
+
+        Registers[rt] = (uint)result;
     }
+
 
     private void ANDI(uint instruction)
     {
@@ -287,9 +337,14 @@ public class CPU
         uint rs = (instruction >> 21) & 0x1F;
         uint rt = (instruction >> 16) & 0x1F;
         short offset = (short)(instruction & 0xFFFF);
+
         if (Registers[rs] == Registers[rt])
-            PC += (uint)(offset << 2);
+        {
+            nextPC = PC + ((uint)offset << 2);
+            inDelaySlot = true;
+        }
     }
+
 
     private void BNE(uint instruction)
     {
@@ -306,8 +361,24 @@ public class CPU
         uint rt = (instruction >> 16) & 0x1F;
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
-        Registers[rt] = ReadWord(addr);
+
+        if ((addr & 3) != 0 || addr + 3 >= RAM.Length)
+        {
+            RaiseException(4); // AddressError (Load)
+            return;
+        }
+
+        int index = (int)(addr & 0x1FFFFF);
+        uint value = (uint)(
+            (RAM[index] << 24) |
+            (RAM[index + 1] << 16) |
+            (RAM[index + 2] << 8) |
+            (RAM[index + 3])
+        );
+
+        Registers[rt] = value;
     }
+
 
     private void SW(uint instruction)
     {
@@ -315,8 +386,22 @@ public class CPU
         uint rt = (instruction >> 16) & 0x1F;
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
-        WriteWord(addr, Registers[rt]);
+
+        if ((addr & 3) != 0 || addr + 3 >= RAM.Length)
+        {
+            RaiseException(5); // AddressError (Store)
+            return;
+        }
+
+        int index = (int)(addr & 0x1FFFFF);
+        uint value = Registers[rt];
+
+        RAM[index + 0] = (byte)((value >> 24) & 0xFF);
+        RAM[index + 1] = (byte)((value >> 16) & 0xFF);
+        RAM[index + 2] = (byte)((value >> 8) & 0xFF);
+        RAM[index + 3] = (byte)(value & 0xFF);
     }
+
 
     private void WriteWord(uint address, uint value)
     {
@@ -378,7 +463,7 @@ public class CPU
         // MIPS exige alinhamento de halfword
         if ((addr & 1) != 0)
         {
-            Console.WriteLine($"Unaligned LH access at 0x{addr:X8}");
+            RaiseException(4); // Load address error
             return;
         }
 
@@ -386,23 +471,26 @@ public class CPU
         Registers[rt] = (uint)value; // extensão de sinal para 32 bits
     }
 
+
     private void LHU(uint instruction)
     {
         uint baseReg = (instruction >> 21) & 0x1F;
         uint rt = (instruction >> 16) & 0x1F;
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
-        int index = (int)(addr % RAM.Length);
 
-        if ((addr & 1) != 0)
+        if ((addr & 1) != 0 || addr + 1 >= RAM.Length)
         {
-            Console.WriteLine($"Unaligned LHU access at 0x{addr:X8}");
+            RaiseException(4); // AddressError (Load)
             return;
         }
 
+        int index = (int)(addr & 0x1FFFFF);
         ushort value = (ushort)((RAM[index] << 8) | RAM[index + 1]);
-        Registers[rt] = value; // zero-extended para 32 bits
+
+        Registers[rt] = value;
     }
+
 
     private void SH(uint instruction)
     {
@@ -410,18 +498,20 @@ public class CPU
         uint rt = (instruction >> 16) & 0x1F;
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
-        int index = (int)(addr % RAM.Length);
 
-        if ((addr & 1) != 0)
+        if ((addr & 1) != 0 || addr + 1 >= RAM.Length)
         {
-            Console.WriteLine($"Unaligned SH access at 0x{addr:X8}");
+            RaiseException(5); // AddressError (Store)
             return;
         }
 
+        int index = (int)(addr & 0x1FFFFF);
         ushort value = (ushort)(Registers[rt] & 0xFFFF);
+
         RAM[index] = (byte)((value >> 8) & 0xFF);
         RAM[index + 1] = (byte)(value & 0xFF);
     }
+
 
     private void LWL(uint instruction)
     {
@@ -579,6 +669,7 @@ public class CPU
 
         // Salta para o handler padrão de exceções
         PC = 0x80000080;
+
     }
 
     private void HandleExceptionHandler(uint instruction)
@@ -766,6 +857,20 @@ public class CPU
           - sx0 * sy2 - sx1 * sy0 - sx2 * sy1;
 
         GTE_Data[24] = (uint)mac0;
+    }
+
+    // Executa uma instrução manualmente (sem buscar da RAM)
+    public void ExecuteRaw(uint instruction)
+    {
+        ExecuteInstruction(instruction);
+    }
+
+    // Reseta a CPU (registradores e RAM)
+    public void ResetCPU()
+    {
+        Array.Clear(Registers, 0, Registers.Length);
+        Array.Clear(RAM, 0, RAM.Length);
+        PC = 0x0;
     }
 
 
