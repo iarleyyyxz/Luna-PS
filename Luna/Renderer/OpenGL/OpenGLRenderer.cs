@@ -3,6 +3,7 @@ using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using Luna.Math;
+using Silk.NET.Vulkan;
 
 public class OpenGLRenderer : IGPURenderer
 {
@@ -198,8 +199,6 @@ public class OpenGLRenderer : IGPURenderer
 
         return textureId;
     }
-
-
 
     public void Present()
     {

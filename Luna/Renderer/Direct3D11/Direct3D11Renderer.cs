@@ -6,15 +6,16 @@ using Vortice.Mathematics;
 using Vortice.Direct3D;
 
 // Renderizador Direct3D11 usando Vortice.Direct3D11
-public class DirectXRenderer : IGPURenderer, IDisposable
+public class Direct3D11Renderer : IGPURenderer, IDisposable
 {
     private ID3D11Device device;
     private ID3D11DeviceContext context;
     private IDXGISwapChain swapChain;
     private ID3D11RenderTargetView renderTarget;
 
-    public DirectXRenderer(IntPtr windowHandle)
+    public Direct3D11Renderer(IntPtr windowHandle)
     {
+        // Inicializa o dispositivo Direct3D11, contexto e swapchain
         // Descrição da SwapChain
         var desc = new SwapChainDescription
         {
