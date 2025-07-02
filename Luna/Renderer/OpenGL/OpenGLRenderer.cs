@@ -204,7 +204,7 @@ public class OpenGLRenderer : IGPURenderer
     public void Present()
     {
         // Limpa o frame (opcional, dependendo de como você organiza a renderização)
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+      //  GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         // Aqui você pode renderizar todos os triângulos/texturas acumulados (se tiver algum batching)
         // ou simplesmente deixar vazio se você já desenhou tudo antes deste ponto

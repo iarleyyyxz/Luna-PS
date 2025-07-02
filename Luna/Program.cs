@@ -7,7 +7,7 @@ public class Program
 {
     public static void Main()
     {
-      /*  var nativeWindowSettings = new NativeWindowSettings()
+        var nativeWindowSettings = new NativeWindowSettings()
         {
             Size = new OpenTK.Mathematics.Vector2i(640, 480),
             Title = "PS1 GPU Emulador - Textura Demo",
@@ -15,8 +15,8 @@ public class Program
         };
 
         using var window = new EmuWindow(GameWindowSettings.Default, nativeWindowSettings);
-        window.Run();*/
-        TestMemoryInstructions();
+        window.Run();
+        //TestMemoryInstructions();
     }
 
     static void TestMemoryInstructions()
