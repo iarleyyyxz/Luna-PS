@@ -35,7 +35,7 @@ public class Direct3D11Renderer : IGPURenderer, IDisposable
         // Criação do dispositivo, contexto e swapchain
         D3D11.D3D11CreateDeviceAndSwapChain(
             null,
-            Vortice.Direct3D.DriverType.Hardware,
+            DriverType.Hardware,
             DeviceCreationFlags.BgraSupport,
             featureLevels,
             desc,
@@ -74,38 +74,38 @@ public class Direct3D11Renderer : IGPURenderer, IDisposable
     public void DrawFlatTriangle(Vertex2D v0, Vertex2D v1, Vertex2D v2, uint color)
     {
         // Prepara os dados dos vértices
-        /* var vertices = new SimpleVertex[]
-         {
-             new SimpleVertex { Position = new System.Numerics.Vector3(v0.X, v0.Y, 0), Color = color },
-             new SimpleVertex { Position = new System.Numerics.Vector3(v1.X, v1.Y, 0), Color = color },
-             new SimpleVertex { Position = new System.Numerics.Vector3(v2.X, v2.Y, 0), Color = color }
-         };
+            /* var vertices = new SimpleVertex[]
+             {
+                 new SimpleVertex { Position = new System.Numerics.Vector3(v0.X, v0.Y, 0), Color = color },
+                 new SimpleVertex { Position = new System.Numerics.Vector3(v1.X, v1.Y, 0), Color = color },
+                 new SimpleVertex { Position = new System.Numerics.Vector3(v2.X, v2.Y, 0), Color = color }
+             };
 
-         // Cria o vertex buffer
-         var vertexBufferDesc = new BufferDescription(
-             sizeof(float) * 3 * 3 + sizeof(uint) * 3,
-             BindFlags.VertexBuffer,
-             Usage.Immutable
-         );
-         using (var vertexBuffer = device.CreateBuffer(vertices, vertexBufferDesc))
-         {
-             // Define o vertex buffer
-             context.IASetVertexBuffers(0, new[] { vertexBuffer }, new[] { sizeof(float) * 3 + sizeof(uint) });
-             context.IASetPrimitiveTopology(Vortice.Direct3D.PrimitiveTopology.TriangleList);
+             // Cria o vertex buffer
+             var vertexBufferDesc = new BufferDescription(
+                 sizeof(float) * 3 * 3 + sizeof(uint) * 3,
+                 BindFlags.VertexBuffer,
+                 Usage.Immutable
+             );
+             using (var vertexBuffer = device.CreateBuffer(vertices, vertexBufferDesc))
+             {
+                 // Define o vertex buffer
+                 context.IASetVertexBuffers(0, new[] { vertexBuffer }, new[] { sizeof(float) * 3 + sizeof(uint) });
+                 context.IASetPrimitiveTopology(Vortice.Direct3D.PrimitiveTopology.TriangleList);
+
+                 // TODO: Definir shaders e input layout (precisa de bytecode HLSL compilado)
+                 // Aqui você pode carregar shaders pré-compilados ou usar um sistema de assets
+
+                 // Desenha o triângulo
+                 context.Draw(3, 0);
+             }
 
              // TODO: Definir shaders e input layout (precisa de bytecode HLSL compilado)
              // Aqui você pode carregar shaders pré-compilados ou usar um sistema de assets
 
              // Desenha o triângulo
-             context.Draw(3, 0);
-         }
-
-         // TODO: Definir shaders e input layout (precisa de bytecode HLSL compilado)
-         // Aqui você pode carregar shaders pré-compilados ou usar um sistema de assets
-
-         // Desenha o triângulo
-         context.Draw(3, 0);*/
-    }
+             context.Draw(3, 0);*/
+        }
 
     // Desenho de triângulo texturizado (não implementado)
     public void DrawTexturedTriangle(TexVertex v0, TexVertex v1, TexVertex v2, int textureId)

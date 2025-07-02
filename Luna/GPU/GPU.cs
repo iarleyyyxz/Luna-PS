@@ -20,9 +20,23 @@ public class GPU
 
     public void Reset()
     {
+        // Limpar buffers e estados
         commandBuffer.Clear();
         Array.Clear(vram, 0, vram.Length);
         renderer.Clear();
+        // Resetar estados de transferência
+        transferMode = 0;
+        transferX = transferY = transferWidth = transferHeight = 0;
+    }
+
+    // <summary>
+    /// Prepara o GPU para desenhar, limpando buffers e estados.
+    /// /// Deve ser chamado antes de iniciar uma nova sequência de comandos.
+    /// </summary>
+    public void PrepareForDrawing()
+    {
+        Console.WriteLine("[GPU] Preparando GPU para desenho...");
+        Reset();
     }
 
     public void WriteGP0(uint value)

@@ -18,71 +18,72 @@ public class Program
          using var window = new EmuWindow(GameWindowSettings.Default, nativeWindowSettings);
          window.Run();*/
         //TestMemoryInstructions();
-        TestOverflowExceptions();
+        // TestOverflowExceptions();
+        // TestSUBOverflowExceptions();
+        // TestAdduSubu_NoOverflow();
+        // TestReservedInstruction();
+        //TestInterrupt();
+       TestTimerIRQ();
+    
     }
 
-    static void TestOverflowExceptions()
+    static void TestTimerIRQ()
     {
-        Console.WriteLine("🚦 Testando exceções de overflow...");
+        Console.WriteLine("🚦 Testando Timer gerando IRQ...");
 
         var cpu = new CPU(new Memory());
-
-        // Teste 1: ADD - overflow positivo
         cpu.ResetCPU();
-        cpu.Registers[1] = 0x7FFFFFFF; // maior int32 positivo
-        cpu.Registers[2] = 1;
-        uint instrADD = (0x00u << 26) | (1u << 21) | (2u << 16) | (3u << 11) | (0u << 6) | 0x20u;
-        ExpectException(() => cpu.ExecuteRaw(instrADD), 12, "ADD overflow positivo");
 
-        // Teste 2: ADD - overflow negativo
-        cpu.ResetCPU();
-        cpu.Registers[1] = 0x80000000; // menor int32 negativo
-        cpu.Registers[2] = 0xFFFFFFFF; // -1
-        instrADD = (0x00u << 26) | (1u << 21) | (2u << 16) | (3u << 11) | (0u << 6) | 0x20u;
-        ExpectException(() => cpu.ExecuteRaw(instrADD), 12, "ADD overflow negativo");
+        // Habilita IRQ 3 (IM3), e global IE
+        cpu.MTC0(12, 0x00000801); // Status: IM3 = 1, IE = 1
 
-        // Teste 3: ADDI - overflow positivo
-        cpu.ResetCPU();
-        cpu.Registers[1] = 0x7FFFFFFF;
-        short imm = 1;
-        uint instrADDI = (0x08u << 26) | (1u << 21) | (2u << 16) | ((ushort)imm);
-        ExpectException(() => cpu.ExecuteRaw(instrADDI), 12, "ADDI overflow positivo");
+        // Configura Timer 0
+        cpu.Timers[0].Target = 5;
+        cpu.Timers[0].Mode = (1 << 10) | (1 << 4); // Enable IRQ, Reset on Target
 
-        // Teste 4: ADDI - overflow negativo
-        cpu.ResetCPU();
-        cpu.Registers[1] = 0x80000000;
-        imm = -1;
-        instrADDI = (0x08u << 26) | (1u << 21) | (2u << 16) | ((ushort)imm);
-        ExpectException(() => cpu.ExecuteRaw(instrADDI), 12, "ADDI overflow negativo");
-
-        Console.WriteLine("✅ Todos os testes de overflow passaram.");
-    }
-
-
-static void ExpectException(Action action, byte expectedCode, string label)
-{
-    try
-    {
-        action();
-        Console.WriteLine($"❌ {label} — esperava exceção {expectedCode}, mas nenhuma foi lançada.");
-    }
-    catch (CpuException ex)
-    {
-        if (ex.Code != expectedCode)
+        // Roda 10 instruções
+        try
         {
-            Console.WriteLine($"❌ {label} — código errado: {ex.Code}, esperado {expectedCode}");
+            for (int i = 0; i < 10; i++)
+                cpu.Step();
         }
-        else
+        catch (CpuException ex)
         {
-            Console.WriteLine($"✅ {label}");
+            if (ex.Code == 0)
+                Console.WriteLine("✅ Timer gerou interrupção corretamente");
+            else
+                Console.WriteLine($"❌ Código de exceção inesperado: {ex.Code}");
         }
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"❌ {label} — exceção inesperada: {ex.Message}");
-    }
-}
 
+
+
+    static void TestInterrupt()
+    {
+        Console.WriteLine("🚦 Testando interrupção (IRQ)...");
+
+        var cpu = new CPU(new Memory());
+        cpu.ResetCPU();
+
+        // Ativa IM0 (bit 8) e IE (bit 0)
+        cpu.MTC0(12, (uint)0x00000101); // Status = IE | IM0
+
+        // Gera IRQ0 (seta IP0 = 1)
+        cpu.SetIRQ(0, true);
+
+        try
+        {
+            cpu.Step(); // Não importa a instrução
+        }
+        catch (CpuException ex)
+        {
+            if (ex.Code == 0)
+                Console.WriteLine("✅ IRQ detectada corretamente");
+            else
+                Console.WriteLine($"❌ IRQ lançada com código errado: {ex.Code}");
+        }
+    }
+    
 
 
 }

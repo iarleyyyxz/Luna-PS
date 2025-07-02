@@ -2,6 +2,7 @@ using System;
 using System.IO;
 
 
+
 public class CPU
 {
     // Registradores
@@ -27,6 +28,37 @@ public class CPU
 
     private Memory memory;
 
+    private uint[] Cop0 = new uint[32];
+
+    private const int COP0_INDEX = 0;
+    private const int COP0_RANDOM = 1;
+    private const int COP0_ENTRYLO = 2;
+    private const int COP0_BADVADDR = 8;
+    private const int COP0_STATUS = 12;
+    private const int COP0_CAUSE = 13;
+    private const int COP0_EPC = 14;
+    private const int COP0_PRID = 15;
+
+    public Timer[] Timers = new Timer[3]
+    {
+        new Timer(), // Timer 0 → IRQ 3
+        new Timer(), // Timer 1 → IRQ 4
+        new Timer()  // Timer 2 → IRQ 5
+    };
+
+
+    // STATUS
+    // Bit 0 = IE (interrupt enable)
+    // Bit 1 = EXL (exception level)
+    // Bits 8..15 = IM0..IM7 (interrupt mask)
+
+    // CAUSE
+    // Bits 8..15 = IP0..IP7 (interrupt pending)
+
+
+    public uint ReadCop0(int reg) => Cop0[reg];
+
+
     public CPU(Memory memory)
     {
         this.memory = memory;
@@ -37,11 +69,10 @@ public class CPU
     {
         uint instruction = FetchInstruction();
 
-        // Se estamos em delay slot, informe
         if (inDelaySlot)
         {
             inDelaySlot = false;
-            PC = nextPC; // agora sim fazemos o salto
+            PC = nextPC;
         }
         else
         {
@@ -49,8 +80,23 @@ public class CPU
         }
 
         ExecuteInstruction(instruction);
-        Registers[0] = 0;  // Garante $zero
+        Registers[0] = 0;
+
+        CheckInterrupts(); // <- aqui!
+
+        for (int i = 0; i < 3; i++)
+        {
+            Timers[i].Tick();
+
+            if (Timers[i].IRQPending)
+            {
+                SetIRQ(i + 3, true); // IRQ3, IRQ4, IRQ5
+                Timers[i].IRQPending = false;
+            }
+        }
+
     }
+
 
 
     public void Reset()
@@ -76,6 +122,30 @@ public class CPU
     {
         return memory.ReadWord(PC);
     }
+
+    private void CheckInterrupts()
+    {
+        uint status = Cop0[COP0_STATUS];
+        uint cause = Cop0[COP0_CAUSE];
+
+        bool IE = (status & 0x1) != 0;       // bit 0
+        bool EXL = (status & 0x2) != 0;       // bit 1
+
+        if (!IE || EXL)
+            return;
+
+        // Bits 8..15 são IM e IP
+        uint enabledIRQs = (status >> 8) & 0xFF;
+        uint pendingIRQs = (cause >> 8) & 0xFF;
+
+        uint activeIRQs = enabledIRQs & pendingIRQs;
+
+        if (activeIRQs != 0)
+        {
+            RaiseException(0); // Código 0 = Interrupt
+        }
+    }
+
 
 
     private uint ReadWord(uint address)
@@ -108,6 +178,16 @@ public class CPU
         return 0;
     }
 
+
+    public void SetIRQ(int line, bool state)
+    {
+        if (line < 0 || line > 7) return;
+
+        if (state)
+            Cop0[COP0_CAUSE] |= (1u << (8 + line));  // IPx = 1
+        else
+            Cop0[COP0_CAUSE] &= ~(1u << (8 + line)); // IPx = 0
+    }
 
     private void ExecuteInstruction(uint instruction)
     {
@@ -257,16 +337,30 @@ public class CPU
             case 0x07: // SRAV
                 Registers[rd] = (uint)((int)Registers[rt] >> (int)(Registers[rs] & 0x1F));
                 break;
-            case 0x22: // SUB
-                Registers[rd] = (uint)((int)Registers[rs] - (int)Registers[rt]);
-                break;
-            case 0x23: // SUBU
-                Registers[rd] = Registers[rs] - Registers[rt];
-                break;
+            case 0x22: // SUB com detecção de overflow
+                {
+                    int a = (int)Registers[rs];
+                    int b = (int)Registers[rt];
+                    int result = a - b;
+
+                    // Detecta overflow de subtração
+                    if (((a ^ b) < 0) && ((a ^ result) < 0))
+                    {
+                        RaiseException(12); // Integer Overflow
+                        return;
+                    }
+
+                    Registers[rd] = (uint)result;
+                    break;
+                }
+
             case 0x21: // ADDU
                 Registers[rd] = Registers[rs] + Registers[rt];
                 break;
 
+            case 0x23: // SUBU
+                Registers[rd] = Registers[rs] - Registers[rt];
+                break;
             default:
                 Console.WriteLine($"Funct desconhecido: 0x{funct:X2} @PC=0x{PC - 4:X8}");
                 break;
@@ -414,6 +508,21 @@ public class CPU
         RAM[index + 1] = (byte)((value >> 16) & 0xFF);
         RAM[index + 2] = (byte)((value >> 8) & 0xFF);
         RAM[index + 3] = (byte)(value & 0xFF);
+
+        if (address >= 0x1F801100 && address <= 0x1F80110F)
+        {
+            int timerIndex = (int)((address - 0x1F801100) / 0x10);
+            int offset = (int)((address - 0x1F801100) % 0x10);
+
+            switch (offset)
+            {
+                case 0x0: Timers[timerIndex].Counter = (ushort)(value & 0xFFFF); break;
+                case 0x4: Timers[timerIndex].Mode = (ushort)(value & 0xFFFF); break;
+                case 0x8: Timers[timerIndex].Target = (ushort)(value & 0xFFFF); break;
+            }
+            return;
+        }
+
     }
 
     private void SLTI(uint instruction)
@@ -626,32 +735,38 @@ public class CPU
     private void HandleCOP0(uint instruction)
     {
         uint rs = (instruction >> 21) & 0x1F;
+        uint rt = (instruction >> 16) & 0x1F;
+        uint rd = (instruction >> 11) & 0x1F;
         uint funct = instruction & 0x3F;
-
-        if (rs == 0x10 && funct == 0x18) // ERET
-        {
-            HandleERET();
-        }
 
         switch (rs)
         {
-            case 0x00: // MFC0 - Move From COP0
-                uint rt = (instruction >> 16) & 0x1F;
-                uint rd = (instruction >> 11) & 0x1F;
-                Registers[rt] = COP0Registers[rd];
+            case 0x00: // MFC0
+                Registers[rt] = Cop0[rd];
                 break;
 
-            case 0x04: // MTC0 - Move To COP0
-                rt = (instruction >> 16) & 0x1F;
-                rd = (instruction >> 11) & 0x1F;
-                COP0Registers[rd] = Registers[rt];
+            case 0x04: // MTC0
+                Cop0[rd] = Registers[rt];
+                break;
+
+            case 0x10: // ERET
+                if (funct == 0x18)
+                {
+                    PC = Cop0[COP0_EPC];
+                    Cop0[COP0_STATUS] &= ~(1u << 1); // limpa EXL
+                }
+                else
+                {
+                    RaiseException(10); // Reserved Instruction
+                }
                 break;
 
             default:
-                Console.WriteLine($"COP0 instruction with rs={rs:X2} not implemented");
+                RaiseException(10); // Reserved Instruction
                 break;
         }
     }
+
 
     private void HandleERET()
     {
@@ -663,22 +778,16 @@ public class CPU
     }
 
 
-    private void RaiseException(byte exceptionCode)
+    private void RaiseException(byte code)
     {
-        // Salva PC atual em EPC (menos 4, pois PC já foi incrementado após fetch)
-        // COP0Registers[14] = PC - 4;
+        Cop0[COP0_EPC] = PC - 4;
+        Cop0[COP0_CAUSE] = (uint)(code << 2);  // bits 6..2
+        Cop0[COP0_STATUS] |= (1u << 1);        // EXL = 1
+        PC = 0x80000080;
 
-        // Atualiza Cause com o código da exceção (bits 6..2)
-        //COP0Registers[13] = (uint)(exceptionCode << 2);
-
-        // Entra em modo Kernel (desabilita interrupções)
-        COP0Registers[12] |= 0x2; // EXL = 1 (bit 1 do Status)
-
-        // Salta para o handler padrão de exceções
-        // PC = 0x80000080;
-        throw new CpuException(exceptionCode);
-
+        throw new CpuException(code);
     }
+
 
     private void HandleExceptionHandler(uint instruction)
     {
@@ -712,6 +821,12 @@ public class CPU
     {
         return GTE_Control[reg & 0x1F];
     }
+
+    public void MTC0(int reg, uint val)
+    {
+        Cop0[reg] = val;
+    }
+
 
     private void GTE_MTC2(uint reg, uint value)
     {
@@ -882,7 +997,7 @@ public class CPU
     }
 
     // Exceção personalizada
- public class CpuException : Exception
+    public class CpuException : Exception
     {
         public byte Code { get; }
 
