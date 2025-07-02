@@ -292,13 +292,13 @@ public class CPU
     {
         uint rs = (instruction >> 21) & 0x1F;
         uint rt = (instruction >> 16) & 0x1F;
-        short imm = (short)(instruction & 0xFFFF);
+        short imm = (short)(instruction & 0xFFFF); // sinalizado
 
         int a = (int)Registers[rs];
         int b = (int)imm;
         int result = a + b;
 
-        // Detecta overflow
+        // Detecta overflow com base nos sinais de entrada e saída
         if (((a ^ b) >= 0) && ((a ^ result) < 0))
         {
             RaiseException(12); // Integer Overflow
@@ -307,6 +307,7 @@ public class CPU
 
         Registers[rt] = (uint)result;
     }
+
 
 
     private void ANDI(uint instruction)
@@ -362,9 +363,10 @@ public class CPU
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
 
-        if ((addr & 3) != 0 || addr + 3 >= RAM.Length)
+        // Verificação de desalinhamento e limites de RAM
+        if ((addr & 0b11) != 0 || addr + 3 >= RAM.Length)
         {
-            RaiseException(4); // AddressError (Load)
+            RaiseException(4); // Load Address Error
             return;
         }
 
@@ -380,6 +382,7 @@ public class CPU
     }
 
 
+
     private void SW(uint instruction)
     {
         uint baseReg = (instruction >> 21) & 0x1F;
@@ -387,9 +390,9 @@ public class CPU
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
 
-        if ((addr & 3) != 0 || addr + 3 >= RAM.Length)
+        if ((addr & 0b11) != 0 || addr + 3 >= RAM.Length)
         {
-            RaiseException(5); // AddressError (Store)
+            RaiseException(5); // Store Address Error
             return;
         }
 
@@ -401,6 +404,7 @@ public class CPU
         RAM[index + 2] = (byte)((value >> 8) & 0xFF);
         RAM[index + 3] = (byte)(value & 0xFF);
     }
+
 
 
     private void WriteWord(uint address, uint value)
@@ -458,18 +462,19 @@ public class CPU
         uint rt = (instruction >> 16) & 0x1F;
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
-        int index = (int)(addr % RAM.Length);
 
-        // MIPS exige alinhamento de halfword
-        if ((addr & 1) != 0)
+        if ((addr & 0b1) != 0 || addr + 1 >= RAM.Length)
         {
-            RaiseException(4); // Load address error
+            RaiseException(4); // Load Address Error
             return;
         }
 
+        int index = (int)(addr & 0x1FFFFF);
         short value = (short)((RAM[index] << 8) | RAM[index + 1]);
-        Registers[rt] = (uint)value; // extensão de sinal para 32 bits
+
+        Registers[rt] = (uint)value;
     }
+
 
 
     private void LHU(uint instruction)
@@ -479,9 +484,9 @@ public class CPU
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
 
-        if ((addr & 1) != 0 || addr + 1 >= RAM.Length)
+        if ((addr & 0b1) != 0 || addr + 1 >= RAM.Length)
         {
-            RaiseException(4); // AddressError (Load)
+            RaiseException(4); // Load Address Error
             return;
         }
 
@@ -492,6 +497,7 @@ public class CPU
     }
 
 
+
     private void SH(uint instruction)
     {
         uint baseReg = (instruction >> 21) & 0x1F;
@@ -499,9 +505,9 @@ public class CPU
         short offset = (short)(instruction & 0xFFFF);
         uint addr = Registers[baseReg] + (uint)offset;
 
-        if ((addr & 1) != 0 || addr + 1 >= RAM.Length)
+        if ((addr & 0b1) != 0 || addr + 1 >= RAM.Length)
         {
-            RaiseException(5); // AddressError (Store)
+            RaiseException(5); // Store Address Error
             return;
         }
 
@@ -511,6 +517,7 @@ public class CPU
         RAM[index] = (byte)((value >> 8) & 0xFF);
         RAM[index + 1] = (byte)(value & 0xFF);
     }
+
 
 
     private void LWL(uint instruction)
@@ -659,16 +666,17 @@ public class CPU
     private void RaiseException(byte exceptionCode)
     {
         // Salva PC atual em EPC (menos 4, pois PC já foi incrementado após fetch)
-        COP0Registers[14] = PC - 4;
+        // COP0Registers[14] = PC - 4;
 
         // Atualiza Cause com o código da exceção (bits 6..2)
-        COP0Registers[13] = (uint)(exceptionCode << 2);
+        //COP0Registers[13] = (uint)(exceptionCode << 2);
 
         // Entra em modo Kernel (desabilita interrupções)
         COP0Registers[12] |= 0x2; // EXL = 1 (bit 1 do Status)
 
         // Salta para o handler padrão de exceções
-        PC = 0x80000080;
+        // PC = 0x80000080;
+        throw new CpuException(exceptionCode);
 
     }
 
@@ -873,6 +881,18 @@ public class CPU
         PC = 0x0;
     }
 
+    // Exceção personalizada
+ public class CpuException : Exception
+    {
+        public byte Code { get; }
+
+        public CpuException(byte code) : base($"Exceção {code}")
+        {
+            Code = code;
+        }
+    }
 
 }
+
+
 

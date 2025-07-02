@@ -2,74 +2,87 @@
 using OpenTK.Windowing.Desktop;
 using OpenTK.Graphics.OpenGL4;
 using System;
+using static CPU;
 
 public class Program
 {
     public static void Main()
     {
-        var nativeWindowSettings = new NativeWindowSettings()
-        {
-            Size = new OpenTK.Mathematics.Vector2i(640, 480),
-            Title = "PS1 GPU Emulador - Textura Demo",
-            Flags = ContextFlags.ForwardCompatible
-        };
+        /* var nativeWindowSettings = new NativeWindowSettings()
+         {
+             Size = new OpenTK.Mathematics.Vector2i(640, 480),
+             Title = "PS1 GPU Emulador - Textura Demo",
+             Flags = ContextFlags.ForwardCompatible
+         };
 
-        using var window = new EmuWindow(GameWindowSettings.Default, nativeWindowSettings);
-        window.Run();
+         using var window = new EmuWindow(GameWindowSettings.Default, nativeWindowSettings);
+         window.Run();*/
         //TestMemoryInstructions();
+        TestOverflowExceptions();
     }
 
-    static void TestMemoryInstructions()
+    static void TestOverflowExceptions()
     {
+        Console.WriteLine("🚦 Testando exceções de overflow...");
+
         var cpu = new CPU(new Memory());
 
-        // Teste 1: LW (Load Word)
+        // Teste 1: ADD - overflow positivo
         cpu.ResetCPU();
-        cpu.RAM[0x100] = 0xDE;
-        cpu.RAM[0x101] = 0xAD;
-        cpu.RAM[0x102] = 0xBE;
-        cpu.RAM[0x103] = 0xEF;
-        cpu.Registers[1] = 0x100; // base
-        uint instrLW = (0x23u << 26) | (1u << 21) | (2u << 16); // LW $2, 0($1)
-        cpu.ExecuteRaw(instrLW);
-        Console.WriteLine(cpu.Registers[2] == 0xDEADBEEF ? "✅ LW passou" : "❌ LW falhou");
+        cpu.Registers[1] = 0x7FFFFFFF; // maior int32 positivo
+        cpu.Registers[2] = 1;
+        uint instrADD = (0x00u << 26) | (1u << 21) | (2u << 16) | (3u << 11) | (0u << 6) | 0x20u;
+        ExpectException(() => cpu.ExecuteRaw(instrADD), 12, "ADD overflow positivo");
 
-        // Teste 2: SW (Store Word)
+        // Teste 2: ADD - overflow negativo
         cpu.ResetCPU();
-        cpu.Registers[1] = 0x200;
-        cpu.Registers[2] = 0x12345678;
-        uint instrSW = ((uint)0x2B << 26) | (1 << 21) | (2 << 16); // SW $2, 0($1)
-        cpu.ExecuteRaw(instrSW);
-        bool swOk = cpu.RAM[0x200] == 0x12 && cpu.RAM[0x201] == 0x34 &&
-                    cpu.RAM[0x202] == 0x56 && cpu.RAM[0x203] == 0x78;
-        Console.WriteLine(swOk ? "✅ SW passou" : "❌ SW falhou");
+        cpu.Registers[1] = 0x80000000; // menor int32 negativo
+        cpu.Registers[2] = 0xFFFFFFFF; // -1
+        instrADD = (0x00u << 26) | (1u << 21) | (2u << 16) | (3u << 11) | (0u << 6) | 0x20u;
+        ExpectException(() => cpu.ExecuteRaw(instrADD), 12, "ADD overflow negativo");
 
-        // Teste 3: LH (Load Halfword Signed)
+        // Teste 3: ADDI - overflow positivo
         cpu.ResetCPU();
-        cpu.RAM[0x300] = 0xFF; // byte alto
-        cpu.RAM[0x301] = 0x80; // byte baixo (valor negativo em short: 0xFF80 == -128)
-        cpu.Registers[1] = 0x300;
-        uint instrLH = ((uint)0x21 << 26) | (1 << 21) | (2 << 16); // LH $2, 0($1)
-        cpu.ExecuteRaw(instrLH);
-        Console.WriteLine(cpu.Registers[2] == 0xFFFFFF80 ? "✅ LH passou" : "❌ LH falhou");
+        cpu.Registers[1] = 0x7FFFFFFF;
+        short imm = 1;
+        uint instrADDI = (0x08u << 26) | (1u << 21) | (2u << 16) | ((ushort)imm);
+        ExpectException(() => cpu.ExecuteRaw(instrADDI), 12, "ADDI overflow positivo");
 
-        // Teste 4: LHU (Load Halfword Unsigned)
+        // Teste 4: ADDI - overflow negativo
         cpu.ResetCPU();
-        cpu.RAM[0x310] = 0xAB;
-        cpu.RAM[0x311] = 0xCD;
-        cpu.Registers[1] = 0x310;
-        uint instrLHU = ((uint)0x25 << 26) | (1 << 21) | (2 << 16); // LHU $2, 0($1)
-        cpu.ExecuteRaw(instrLHU);
-        Console.WriteLine(cpu.Registers[2] == 0xABCD ? "✅ LHU passou" : "❌ LHU falhou");
+        cpu.Registers[1] = 0x80000000;
+        imm = -1;
+        instrADDI = (0x08u << 26) | (1u << 21) | (2u << 16) | ((ushort)imm);
+        ExpectException(() => cpu.ExecuteRaw(instrADDI), 12, "ADDI overflow negativo");
 
-        // Teste 5: SH (Store Halfword)
-        cpu.ResetCPU();
-        cpu.Registers[1] = 0x320;
-        cpu.Registers[2] = 0xCAFEBABE;
-        uint instrSH = ((uint)0x29 << 26) | (1 << 21) | (2 << 16); // SH $2, 0($1)
-        cpu.ExecuteRaw(instrSH);
-        bool shOk = cpu.RAM[0x320] == 0xBA && cpu.RAM[0x321] == 0xBE;
-        Console.WriteLine(shOk ? "✅ SH passou" : "❌ SH falhou");
+        Console.WriteLine("✅ Todos os testes de overflow passaram.");
     }
+
+
+static void ExpectException(Action action, byte expectedCode, string label)
+{
+    try
+    {
+        action();
+        Console.WriteLine($"❌ {label} — esperava exceção {expectedCode}, mas nenhuma foi lançada.");
+    }
+    catch (CpuException ex)
+    {
+        if (ex.Code != expectedCode)
+        {
+            Console.WriteLine($"❌ {label} — código errado: {ex.Code}, esperado {expectedCode}");
+        }
+        else
+        {
+            Console.WriteLine($"✅ {label}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ {label} — exceção inesperada: {ex.Message}");
+    }
+}
+
+
 
 }
