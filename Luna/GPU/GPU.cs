@@ -12,6 +12,9 @@ public class GPU
     private int transferX, transferY, transferWidth, transferHeight;
     private int transferCount = 0;
 
+    private uint gp1Control = 0;
+    private Action<int, bool>? RaiseIRQ; // delegar IRQ para CPU
+
     public GPU(IGPURenderer rendererBackend)
     {
         renderer = rendererBackend;
@@ -82,16 +85,37 @@ public class GPU
         }
     }
 
+    public void WriteGP1(uint value)
+    {
+        // Bit 0: Acknowledge IRQ
+        if ((value & 0x1) != 0)
+        {
+            gp1Control &= ~(1u << 24); // clear IRQ enable
+            RaiseIRQ?.Invoke(0, false); // clear IRQ0
+        }
 
+        // Bit 24: Enable IRQ1
+        if ((value & (1u << 24)) != 0)
+        {
+            gp1Control |= (1u << 24);
+        }
+
+        Console.WriteLine($"[GPU] GP1 escrito: 0x{value:X8}");
+    }
 
     public void Render()
     {
         renderer.Present();
     }
 
+    
+    public void ConnectIRQHandler(Action<int, bool> irqCallback)
+    {
+        RaiseIRQ = irqCallback;
+    }
+
     private void UploadToVRAM(uint data)
     {
-
         if (transferWidth == 0 || transferHeight == 0)
         {
             Console.WriteLine("[GPU] Erro: tentativa de escrever na VRAM sem tamanho válido.");
@@ -114,10 +138,19 @@ public class GPU
         if (transferCount >= transferWidth * transferHeight)
         {
             Console.WriteLine("[GPU] Transferência para VRAM finalizada");
+
+            // 🟢 Gera IRQ0 se o bit 24 de gp1Control estiver habilitado
+            if ((gp1Control & (1u << 24)) != 0)
+            {
+                Console.WriteLine("[GPU] IRQ0 gerado ao finalizar transferência");
+                RaiseIRQ?.Invoke(0, true); // IRQ0
+            }
+
             transferMode = 0;
             transferCount = 0;
         }
     }
+
 
     private bool IsCommandComplete()
     {
