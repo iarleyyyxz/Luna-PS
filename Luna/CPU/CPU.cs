@@ -174,9 +174,63 @@ public class CPU
             );
         }
 
+        // Acesso aos registradores dos Timers (0x1F801100 - 0x1F80112F)
+        if (address >= 0x1F801100 && address <= 0x1F80112F)
+        {
+            int timerIndex = (int)((address - 0x1F801100) / 0x10);
+            int offset = (int)((address - 0x1F801100) % 0x10);
+
+            switch (offset)
+            {
+                case 0x0: return Timers[timerIndex].Counter;
+                case 0x4: return Timers[timerIndex].Mode;
+                case 0x8: return Timers[timerIndex].Target;
+                default: return 0;
+            }
+        }
+
+
         Console.WriteLine($"Leitura inválida de endereço: 0x{address:X8}");
         return 0;
     }
+
+    private void WriteWord(uint address, uint value)
+{
+    // Região de RAM (espelhada em várias áreas)
+    if ((address & 0x1FFF_FFFF) < RAM.Length)
+    {
+        int index = (int)(address & 0x1FFFFF); // 2MB
+        RAM[index + 0] = (byte)((value >> 24) & 0xFF);
+        RAM[index + 1] = (byte)((value >> 16) & 0xFF);
+        RAM[index + 2] = (byte)((value >> 8) & 0xFF);
+        RAM[index + 3] = (byte)(value & 0xFF);
+        return;
+    }
+
+    // Região dos Timers (0x1F801100 - 0x1F80112F)
+    if (address >= 0x1F801100 && address <= 0x1F80112F)
+    {
+        int timerIndex = (int)((address - 0x1F801100) / 0x10);
+        int offset = (int)((address - 0x1F801100) % 0x10);
+
+        switch (offset)
+        {
+            case 0x0:
+                Timers[timerIndex].Counter = (ushort)(value & 0xFFFF);
+                break;
+            case 0x4:
+                Timers[timerIndex].Mode = (ushort)(value & 0x3FFF); // 14 bits válidos
+                break;
+            case 0x8:
+                Timers[timerIndex].Target = (ushort)(value & 0xFFFF);
+                break;
+        }
+        return;
+    }
+
+    Console.WriteLine($"Escrita inválida de endereço: 0x{address:X8}, valor: 0x{value:X8}");
+}
+
 
 
     public void SetIRQ(int line, bool state)
@@ -189,7 +243,7 @@ public class CPU
             Cop0[COP0_CAUSE] &= ~(1u << (8 + line)); // IPx = 0
     }
 
-    private void ExecuteInstruction(uint instruction)
+    public void ExecuteInstruction(uint instruction)
     {
 
         // Se PC estiver no handler e a instrução for especial, trate o handler
@@ -499,31 +553,6 @@ public class CPU
         RAM[index + 3] = (byte)(value & 0xFF);
     }
 
-
-
-    private void WriteWord(uint address, uint value)
-    {
-        int index = (int)(address % RAM.Length);
-        RAM[index + 0] = (byte)((value >> 24) & 0xFF);
-        RAM[index + 1] = (byte)((value >> 16) & 0xFF);
-        RAM[index + 2] = (byte)((value >> 8) & 0xFF);
-        RAM[index + 3] = (byte)(value & 0xFF);
-
-        if (address >= 0x1F801100 && address <= 0x1F80110F)
-        {
-            int timerIndex = (int)((address - 0x1F801100) / 0x10);
-            int offset = (int)((address - 0x1F801100) % 0x10);
-
-            switch (offset)
-            {
-                case 0x0: Timers[timerIndex].Counter = (ushort)(value & 0xFFFF); break;
-                case 0x4: Timers[timerIndex].Mode = (ushort)(value & 0xFFFF); break;
-                case 0x8: Timers[timerIndex].Target = (ushort)(value & 0xFFFF); break;
-            }
-            return;
-        }
-
-    }
 
     private void SLTI(uint instruction)
     {

@@ -23,8 +23,28 @@ public class Program
         // TestAdduSubu_NoOverflow();
         // TestReservedInstruction();
         //TestInterrupt();
-       TestTimerIRQ();
+        // TestTimerIRQ();
+        TestMIPSInstruct();
     
+    }
+
+    static void TestMIPSInstruct()
+    {
+
+        CPU cpu = new CPU(new Memory());
+        cpu.ResetCPU();
+
+
+        // SW $2, 0x1108($0) → escrever Timer0.Target
+        cpu.Registers[2] = 0x0040;
+        uint sw = ((uint)0x2B << 26) | (0 << 21) | (2 << 16) | 0x1108;
+        cpu.ExecuteInstruction(sw);
+
+        // LW $3, 0x1108($0) → ler de volta
+        uint lw = ((uint)0x23 << 26) | (0 << 21) | (3 << 16) | 0x1108;
+        cpu.ExecuteInstruction(lw);
+        Console.WriteLine($"Timer0.Target = {cpu.Registers[3]:X8}");
+
     }
 
     static void TestTimerIRQ()
